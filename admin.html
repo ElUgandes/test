@@ -103,60 +103,79 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-<script type="module">
-  // Configuración Firebase
-  const firebaseConfig = {
-    apiKey: "AIzaSyDszNdIoOe251gNQWlIWcDVxJO28OVSEZI",
+  <script type="module">
+    
+    const firebaseConfig = {
+      apiKey: "AIzaSyDszNdIoOe251gNQWlIWcDVxJO28OVSEZI",
       authDomain: "pwaint-16ba7.firebaseapp.com",
       projectId: "pwaint-16ba7",
       storageBucket: "pwaint-16ba7.firebasestorage.app",
       messagingSenderId: "563587192850",
       appId: "1:563587192850:web:3ec9c02f9dd105b3ffa0cb"
-  };
+    };
 
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { 
-    getFirestore, collection, addDoc, serverTimestamp,
-    onSnapshot, query, orderBy, deleteDoc, doc
-  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { 
+      getFirestore, collection, addDoc, serverTimestamp,
+      onSnapshot, query, orderBy, deleteDoc, doc
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  // HABILITAR PERSISTENCIA OFFLINE DE FIRESTORE
-import { enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-enableIndexedDbPersistence(db)
-  .then(() => {
-    console.log("Persistencia offline habilitada");
-    showAlert("Modo offline disponible", "success");
-  })
-  .catch((err) => {
-    if (err.code == 'failed-precondition') {
-      console.log("Múltiples pestañas abiertas");
-    } else if (err.code == 'unimplemented') {
-      console.log("Navegador no soporta persistencia");
+    
+    let app, db;
+    try {
+      app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      console.log("Firebase inicializado");
+      updateStatus("Conectado a Firebase", "success");
+    } catch (error) {
+      console.error(" Error Firebase:", error);
+      updateStatus("Error configurando Firebase", "danger");
     }
-  });
 
-// DETECCIÓN DE CONEXIÓN
-function updateOnlineStatus() {
-  const status = navigator.onLine ? 'online' : 'offline';
+    
   
-  if (!navigator.onLine) {
-    showAlert("🔌 Modo offline activado - Trabajando localmente", "warning");
-  } else {
-    showAlert("🌐 Conectado - Sincronizando con servidor", "success");
-  }
-}
 
-window.addEventListener('online', updateOnlineStatus);
-window.addEventListener('offline', updateOnlineStatus);
-updateOnlineStatus();
+   
+    function updateStatus(message, type) {
+      const indicator = document.getElementById('statusIndicator');
+      if (!indicator) return;
+      
+      const colors = {
+        success: 'bg-success',
+        danger: 'bg-danger',
+        warning: 'bg-warning',
+        info: 'bg-info'
+      };
+      
+      indicator.className = `badge ${colors[type] || 'bg-info'}`;
+      indicator.textContent = message;
+    }
 
-  
-  // Cloudinary
-  const cloudName = "dwo3ffocr";      
+    function showAlert(message, type) {
+      const alertDiv = document.createElement('div');
+      alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+      alertDiv.style.zIndex = '1060';
+      alertDiv.style.maxWidth = '350px';
+      alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      `;
+      document.body.appendChild(alertDiv);
+      
+      setTimeout(() => {
+        if (alertDiv.parentNode) alertDiv.remove();
+      }, 5000);
+    }
+
+    function currencyMX(n) {
+      return Number(n || 0).toLocaleString('es-MX', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+// Cloudinary
+const cloudName = "dwo3ffocr";      
   const uploadPreset = "pwa_unsigned";
 
   const modal = new bootstrap.Modal(document.getElementById('productoModal'));
@@ -172,7 +191,7 @@ updateOnlineStatus();
     });
   }
 
-  // Preview de imágenes
+     // Preview de imágenes
   imagenesInput.addEventListener('change', function(e) {
     previewDiv.innerHTML = '';
     const files = Array.from(e.target.files);
@@ -192,73 +211,82 @@ updateOnlineStatus();
       reader.readAsDataURL(file);
     });
   });
-
-  function renderProducts(productos) {
-    container.innerHTML = '';
-    
-    if (productos.length === 0) {
-      container.innerHTML = `
-        <div class="col-12 text-center py-5">
-          <i class="bi bi-inbox display-1 text-muted"></i>
-          <h4 class="text-muted mt-3">No hay productos</h4>
-          <p class="text-muted">Agrega tu primer producto haciendo clic en "Nuevo Producto"</p>
-        </div>
-      `;
-      return;
-    }
-    
-    productos.forEach(p => {
-      const col = document.createElement('div');
-      col.className = 'col-md-6 col-lg-4 mb-4';
-
-      const imagenesHTML = Array.isArray(p.imagenes) && p.imagenes.length > 0 
-        ? p.imagenes.map(url => `<img src="${url}" class="thumb" alt="${p.nombre}">`).join('')
-        : `<img src="${p.imagenUrl || 'https://via.placeholder.com/100x100?text=Sin+Imagen'}" class="thumb" alt="${p.nombre}">`;
-
-      col.innerHTML = `
-        <div class="card h-100 shadow-sm">
-          <div class="card-body">
-            <div class="thumb-grid mb-3">
-              ${imagenesHTML}
+    function renderProducts(productos) {
+      if (!container) return;
+      
+      if (!productos || productos.length === 0) {
+        container.innerHTML = `
+          <div class="col-12">
+            <div class="text-center py-5">
+              <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+              <h4 class="text-muted mb-3">No hay productos</h4>
+              <p class="text-muted mb-4">Comienza agregando tu primer producto</p>
+              <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productoModal">
+                <i class="bi bi-plus-lg"></i> Agregar Producto
+              </button>
             </div>
-            <h5 class="card-title">${p.nombre}</h5>
-            <p class="card-text">${p.descripcion}</p>
-            <p class="card-text">
-              <strong>Precio:</strong> $${currencyMX(p.precio)}<br>
-              <strong>Categoría:</strong> ${p.categoria}<br>
-              <strong>Stock:</strong> 
-              <span class="badge ${p.stock > 0 ? 'bg-success' : 'bg-danger'}">${p.stock}</span>
-            </p>
           </div>
-          <div class="card-footer">
-            <button class="btn btn-danger w-100" data-action="delete" data-id="${p._id}">
-              <i class="bi bi-trash3"></i> Eliminar
-            </button>
+        `;
+        return;
+      }
+      
+      container.innerHTML = productos.map(p => `
+        <div class="col-md-6 col-lg-4 mb-4">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <div class="mb-3">
+                ${p.imagenes && p.imagenes.length > 0 ? 
+                  `<img src="${p.imagenes[0]}" class="img-fluid rounded" style="height: 150px; object-fit: cover;" alt="${p.nombre}">` :
+                  `<div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 150px;">
+                    <i class="bi bi-image text-muted display-6"></i>
+                  </div>`
+                }
+              </div>
+              <h5 class="card-title">${p.nombre || 'Sin nombre'}</h5>
+              <p class="card-text text-muted small mb-2">
+                ${(p.descripcion || '').substring(0, 100)}${(p.descripcion && p.descripcion.length > 100) ? '...' : ''}
+              </p>
+              <div class="product-info">
+                <p class="mb-1"><strong>Precio:</strong> $${currencyMX(p.precio)}</p>
+                <p class="mb-1"><strong>Código:</strong> ${p.codigo || 'N/A'}</p>
+                <p class="mb-1"><strong>Marca:</strong> ${p.marca || 'N/A'}</p>
+                <p class="mb-1"><strong>Colores disponibles:</strong> ${p.color || 'N/A'}</p>
+                <p class="mb-1"><strong>Dimensiones del producto:</strong> ${p.tamaño || 'N/A'}</p>
+                <p class="mb-1"><strong>Categoría:</strong> <span class="badge bg-primary">${p.categoria || 'N/A'}</span></p>
+                <p class="mb-1"><strong>Stock:</strong> 
+                  <span class="badge ${p.stock > 0 ? 'bg-success' : 'bg-danger'}">
+                    ${p.stock || 0} unidades
+                  </span>
+                </p>
+              </div>
+            </div>
+            <div class="card-footer bg-transparent">
+              <button class="btn btn-danger w-100 delete-btn" data-id="${p._id}">
+                <i class="bi bi-trash"></i> Eliminar
+              </button>
+            </div>
           </div>
-        </div>`;
-      container.appendChild(col);
-    });
-
-    container.querySelectorAll('[data-action="delete"]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const id = e.currentTarget.getAttribute('data-id');
-        if (id && confirm('¿Eliminar este producto?')) {
-          await deleteDoc(doc(db,'productos', id));
-        }
+        </div>
+      `).join('');
+      
+      // Agregar event listeners para eliminar
+      container.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.currentTarget.dataset.id;
+          if (id && confirm('¿Eliminar este producto permanentemente?')) {
+            try {
+              await deleteDoc(doc(db, 'productos', id));
+              showAlert('Producto eliminado', 'success');
+            } catch (error) {
+              console.error('Error eliminando:', error);
+              showAlert(' Error al eliminar', 'danger');
+            }
+          }
+        });
       });
-    });
-  }
-
-  const productosRef = collection(db, 'productos');
-  const q = query(productosRef, orderBy('createdAt','desc'));
-
-  onSnapshot(q, (snap) => {
-    const arr = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
-    renderProducts(arr);
-  });
-
-  // Subir múltiples imágenes a Cloudinary
-  async function uploadImagesToCloudinary(files) {
+    }
+// Subir múltiples imágenes a Cloudinary
+async function uploadImagesToCloudinary(files) {
     const urls = [];
     
     for (const file of files) {
@@ -280,78 +308,170 @@ updateOnlineStatus();
       } catch (error) {
         console.error("Error subiendo imagen:", error);
       }
-    }
-    
-    return urls;
-  }
+    }}
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const submitBtn = document.getElementById('submitBtn');
-    const spinner = document.getElementById('submitSpinner');
-    
-    submitBtn.disabled = true;
-    spinner.classList.remove('d-none');
-
-    const nombre = document.getElementById('nombreProducto').value.trim();
-    const precio = parseFloat(document.getElementById('precioProducto').value || '0');
-    const descripcion = document.getElementById('descripcion').value.trim();
-    const categoria = document.getElementById('categoria').value.trim();
-    const stock = parseInt(document.getElementById('stock').value || '0');
-    const imagenesInput = document.getElementById('imagenesProducto');
-
-    try {
-      let imagenesUrls = [];
-
-      if (imagenesInput.files.length > 0) {
-        imagenesUrls = await uploadImagesToCloudinary(Array.from(imagenesInput.files));
-      }
-
-      await addDoc(productosRef, {
-        nombre,
-        precio,
-        descripcion,
-        categoria,
-        stock,
-        imagenes: imagenesUrls,
-        imagenUrl: imagenesUrls[0] || '',
-        createdAt: serverTimestamp()
+    if (imagenesInput && previewDiv) {
+      imagenesInput.addEventListener('change', function(e) {
+        previewDiv.innerHTML = '';
+        const files = Array.from(e.target.files || []);
+        
+        files.forEach(file => {
+          if (!file.type.startsWith('image/')) return;
+          
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.className = 'thumb';
+            img.style.height = '80px';
+            previewDiv.appendChild(img);
+          };
+          reader.readAsDataURL(file);
+        });
       });
-
-      showAlert('Producto guardado correctamente!', 'success');
-      
-      e.target.reset();
-      previewDiv.innerHTML = '';
-      modal.hide();
-
-    } catch (error) {
-      console.error('Error guardando producto:', error);
-      showAlert('Error al guardar el producto', 'danger');
-    } finally {
-      submitBtn.disabled = false;
-      spinner.classList.add('d-none');
     }
-  });
 
-  function showAlert(message, type) {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
-    alertDiv.style.zIndex = '1060';
-    alertDiv.innerHTML = `
-      ${message}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    document.body.appendChild(alertDiv);
+   
+    if (db) {
+      try {
+        const productosRef = collection(db, 'productos');
+        const q = query(productosRef, orderBy('createdAt', 'desc'));
+        
+        onSnapshot(q, 
+          (snapshot) => {
+            const productos = snapshot.docs.map(doc => ({
+              _id: doc.id,
+              ...doc.data()
+            }));
+            renderProducts(productos);
+            updateStatus(` Número de productos regustrados : ${productos.length} `, "success");
+          },
+          (error) => {
+            console.error("Error cargando productos:", error);
+            
+            if (error.code === 'permission-denied') {
+              showAlert(`
+                <h6> Permisos Denegados</h6>
+                <p class="small mb-0">Configura las reglas de Firestore:</p>
+                <ol class="small mb-0">
+                  <li>Abre <a href="https://console.firebase.google.com/project/pwaint-16ba7/firestore/rules" target="_blank">Firebase Console</a></li>
+                  <li>Pega esto y haz clic en PUBLICAR:</li>
+                </ol>
+                <pre class="bg-dark text-white p-2 small mt-2">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+              `, 'danger');
+              updateStatus('Error de permisos', 'danger');
+            } else {
+              showAlert(`Error: ${error.message}`, 'danger');
+            }
+          }
+        );
+      } catch (error) {
+        console.error("Error inicializando listeners:", error);
+      }
+    }
+
+    // ================= MANEJAR FORMULARIO =================
+    if (form) {
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        if (!db) {
+          showAlert('Firebase no configurado', 'danger');
+          return;
+        }
+        
+        const submitBtn = document.getElementById('submitBtn');
+        const spinner = document.getElementById('submitSpinner');
+        
+        submitBtn.disabled = true;
+        spinner?.classList.remove('d-none');
+        
+        try {
+          // Obtener valores
+          const nombre = document.getElementById('nombreProducto').value.trim();
+          const codigo = document.getElementById('codigo').value.trim();
+          const marca = document.getElementById('marca').value.trim();
+          const color = document.getElementById('color').value.trim();
+          const tamaño = document.getElementById('tamaño').value.trim();
+          const precio = parseFloat(document.getElementById('precioProducto').value || 0);
+          const stock = parseInt(document.getElementById('stock').value || 0);
+          const categoria = document.getElementById('categoria').value;
+          const descripcion = document.getElementById('descripcion').value.trim();
+          
+          //función  cloudinary
+          
+          // Validaciones
+          if (!nombre || !codigo || !categoria) {
+            throw new Error('Completa los campos obligatorios (*)');
+          }
+          
+          if (precio <= 0) {
+            throw new Error('El precio debe ser mayor a 0');
+          }
+          
+          if (stock < 0) {
+            throw new Error('El stock no puede ser negativo');
+          }
+          
+          // Crear objeto producto
+          const productoData = {
+            nombre,
+            codigo,
+            marca,
+            color,
+            tamaño,
+            precio,
+            stock,
+            categoria,
+            descripcion,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          };
+          
+          // Guardar en Firestore
+          await addDoc(collection(db, 'productos'), productoData);
+          
+          showAlert('Producto guardado correctamente', 'success');
+          form.reset();
+          if (previewDiv) previewDiv.innerHTML = '';
+          
+          // Cerrar modal
+          const modal = bootstrap.Modal.getInstance(document.getElementById('productoModal'));
+          modal?.hide();
+          
+        } catch (error) {
+          console.error('Error guardando producto:', error);
+          showAlert(`Error: ${error.message}`, 'danger');
+        } finally {
+          submitBtn.disabled = false;
+          spinner?.classList.add('d-none');
+        }
+      });
+    }
+
+    // ================= MANEJO DE CONEXIÓN =================
+    window.addEventListener('online', () => {
+      updateStatus('🌐 Conectado', 'success');
+    });
     
-    setTimeout(() => {
-      alertDiv.remove();
-    }, 5000);
-  }
+    window.addEventListener('offline', () => {
+      updateStatus(' Modo offline', 'warning');
+      showAlert('Trabajando en modo offline', 'warning');
+    });
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js');
-  }
-</script>
+    // ================= SERVICE WORKER =================
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log(' Service Worker registrado:', reg.scope))
+        .catch(err => console.log(' Service Worker error:', err));
+    }
+  </script>
 </body>
 </html>
